@@ -332,9 +332,9 @@ function render() {
     $('heroLabel').textContent = h.value.label;
     const v = state[h.value.key];
     $('heroValue').textContent = typeof v === 'number' ? v.toFixed(h.value.decimals) : '--';
-    $('heroUnit').textContent = h.value.unit;
+    $('heroUnit').textContent = h.value.unit ?? '';
     const sv = h.sub ? state[h.sub.key] : undefined;
-    $('heroSub').textContent = h.sub ? `${h.sub.label} ${typeof sv === 'number' ? sv.toFixed(h.sub.decimals) : '--'}${h.sub.unit}` : '';
+    $('heroSub').textContent = h.sub ? `${h.sub.label} ${typeof sv === 'number' ? sv.toFixed(h.sub.decimals) : '--'}${h.sub.unit ?? ''}` : '';
     $('hero').classList.toggle('dim', matches(h.dimWhen, state) && Object.keys(state).length > 0);
   }
 

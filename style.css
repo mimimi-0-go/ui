@@ -109,7 +109,7 @@ body:not([data-conn="on"]) .actions { opacity: .45; pointer-events: none; }
 .stepper button:disabled { opacity: .35; }
 
 /* セグメント */
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--seg-bg); border-radius: 14px; padding: 4px; }
+.seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; background: var(--seg-bg); border-radius: 14px; padding: 4px; }
 .seg button {
   min-height: 44px; border: 0; border-radius: 10px; background: transparent;
   color: var(--muted); font: inherit; font-size: 15px; cursor: pointer;
