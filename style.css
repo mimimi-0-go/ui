@@ -1,0 +1,152 @@
+:root {
+  --bg: #f4f2ee;
+  --surface: #ffffff;
+  --text: #1c1d1f;
+  --muted: #6b6f76;
+  --line: #e3e0da;
+  --accent: #1f6feb;
+  --accent-ink: #ffffff;
+  --on: #1a9b5c;
+  --warn: #c2410c;
+  --seg-bg: #ece9e3;
+  --radius: 18px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181b;
+    --surface: #202328;
+    --text: #eceef1;
+    --muted: #9aa0a8;
+    --line: #2f333a;
+    --accent: #5b9dff;
+    --accent-ink: #0b1220;
+    --on: #3ccf8e;
+    --warn: #fb923c;
+    --seg-bg: #2a2e34;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: calc(140px + env(safe-area-inset-bottom));
+}
+main { max-width: 520px; margin: 0 auto; padding: 0 16px; }
+
+.top {
+  max-width: 520px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 8px;
+}
+.eyebrow { font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+h1 { margin: 0; font-size: 22px; font-weight: 700; }
+h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; padding: 6px 12px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+  white-space: nowrap;
+}
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+body[data-conn="on"] .badge { color: var(--on); }
+body[data-conn="on"] .badge i { background: var(--on); }
+body[data-conn="busy"] .badge i { background: var(--accent); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .2; } }
+
+.hero { text-align: center; padding: 28px 0 20px; transition: opacity .3s; }
+.hero.dim { opacity: .35; }
+.hero-label { font-size: 13px; color: var(--muted); }
+.hero-value { font-size: 84px; line-height: 1; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.hero-value small { font-size: 28px; margin-left: 4px; color: var(--muted); }
+.hero-sub { margin-top: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.controls { display: grid; gap: 12px; }
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; margin-top: 12px;
+}
+.controls .card { margin-top: 0; }
+.hidden { display: none !important; }
+
+/* UI 定義を本体から受け取るまでは、説明だけを出す */
+body:not([data-ui="ready"]) #hero,
+body:not([data-ui="ready"]) #controls,
+body:not([data-ui="ready"]) #statusCard,
+body:not([data-ui="ready"]) #actions { display: none; }
+body[data-ui="ready"] #intro { display: none; }
+.intro { margin: 48px 0 0; color: var(--muted); text-align: center; }
+
+body:not([data-conn="on"]) .controls,
+body:not([data-conn="on"]) .actions { opacity: .45; pointer-events: none; }
+
+/* 電源 */
+.power { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.power .lbl { font-size: 18px; font-weight: 600; }
+.power .state { font-size: 13px; color: var(--muted); }
+.power button {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--seg-bg); color: var(--muted);
+  display: grid; place-items: center; cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.power button[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: #fff; }
+.power svg { width: 30px; height: 30px; }
+
+/* ステッパー */
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stepper .val { font-size: 28px; font-variant-numeric: tabular-nums; min-width: 5ch; text-align: center; }
+.stepper button {
+  width: 56px; height: 56px; border-radius: 16px; border: 1px solid var(--line);
+  background: var(--seg-bg); color: var(--text); font-size: 26px; cursor: pointer;
+}
+.stepper button:disabled { opacity: .35; }
+
+/* セグメント */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--seg-bg); border-radius: 14px; padding: 4px; }
+.seg button {
+  min-height: 44px; border: 0; border-radius: 10px; background: transparent;
+  color: var(--muted); font: inherit; font-size: 15px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+.status { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+.status dt { color: var(--muted); }
+.status dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.actions { display: grid; gap: 8px; margin-top: 12px; }
+button.ghost {
+  min-height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: transparent; color: var(--text); font: inherit; cursor: pointer;
+}
+.foot { color: var(--muted); font-size: 12px; text-align: center; margin: 20px 0; }
+
+.connect-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; gap: 8px; justify-items: center;
+  transition: transform .3s;
+}
+.connect-bar p { margin: 0; font-size: 14px; color: var(--muted); text-align: center; }
+.connect-bar p.err { color: var(--warn); }
+body[data-conn="on"] .connect-bar { transform: translateY(110%); }
+button.primary {
+  width: 100%; max-width: 488px; min-height: 56px; border: 0; border-radius: 16px;
+  background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer;
+}
+button.primary:disabled { opacity: .5; }
+
+.toast {
+  position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top));
+  transform: translate(-50%, -150%); transition: transform .25s;
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px;
+  max-width: calc(100% - 32px);
+}
+.toast.show { transform: translate(-50%, 0); }
