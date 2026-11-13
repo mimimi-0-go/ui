@@ -382,6 +382,9 @@ function onConnected(r) {
   build();
   setConn('on');
   toast('接続しました');
+  // 本体の時計をスマホの時刻に合わせる（時計を持たない本体はこの命令を無視する）
+  transport.send({ cmd: 'clock', epoch: Math.floor(Date.now() / 1000), tz: -new Date().getTimezoneOffset() })
+    .catch(() => {});
 }
 
 function errorMessage(e) {
