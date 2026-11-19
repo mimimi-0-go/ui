@@ -1,53 +1,913 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#16181b" media="(prefers-color-scheme: dark)">
-  <title>パネル</title>
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18212a" media="(prefers-color-scheme: dark)">
+<title>空調コントローラ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow:wght@300;500;600&display=swap">
+<style>
+/* つないだ本体1台の操作画面が基本。管理者メニュー（本体設定・集中管理）はフッターから入る */
+:root {
+  --bg: #eef2f5; --surface: #ffffff; --sunk: #e3e9ee; --fg: #16212b; --muted: #5d6b78; --faint: #b9c4cd; --line: #d3dce3;
+  --accent: #0b6e99; --accent-ink: #ffffff;
+  --cool: #1d6fd1; --heat: #d2621e; --dry: #0f8a7e; --fan: #6b7785; --auto: #7a56c2; --off: #9aa6b1;
+  --warn: #b45309; --warn-bg: #fdf1e2; --ok: #1a8a4a;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "Barlow", "BIZ UDPGothic", system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151b; --surface: #18212a; --sunk: #202b35; --fg: #e6edf2; --muted: #9aa8b5; --faint: #3a4754; --line: #2b3742;
+    --accent: #4fb3e0; --accent-ink: #062030; --cool: #5a9cf0; --heat: #f08a4b; --dry: #3cc3b2; --fan: #9aa6b4;
+    --auto: #a98cf0; --off: #5b6875; --warn: #f5a524; --warn-bg: #2d2313; --ok: #4cc37f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151b; --surface: #18212a; --sunk: #202b35; --fg: #e6edf2; --muted: #9aa8b5; --faint: #3a4754; --line: #2b3742;
+  --accent: #4fb3e0; --accent-ink: #062030; --cool: #5a9cf0; --heat: #f08a4b; --dry: #3cc3b2; --fan: #9aa6b4;
+  --auto: #a98cf0; --off: #5b6875; --warn: #f5a524; --warn-bg: #2d2313; --ok: #4cc37f; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 var(--font-body); -webkit-tap-highlight-color: transparent;
+  display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---- 上部 ---- */
+header.top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+.topbar { display: flex; align-items: center; gap: 10px; min-height: 56px; padding-block: 8px; }
+.devname { min-width: 0; display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+.devname b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.devname .id { font-family: var(--font-num); font-size: 12px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); display: inline-block; flex: none; align-self: center; }
+.dot.on { background: var(--ok); }
+.badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--fg); color: var(--bg); flex: none; }
+.tabs { display: flex; gap: 4px; background: var(--sunk); border-radius: 10px; padding: 3px; margin-bottom: 10px; overflow-x: auto; }
+.tabs button { flex: 1 0 auto; border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.tabs button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 14px; min-height: 40px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.btn:disabled { opacity: .45; cursor: default; }
+main { flex: 1 0 auto; padding-top: 16px; padding-bottom: 24px; }
+
+/* ---- 操作画面 ---- */
+.panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) {
+  .panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .col { gap: 12px; }
+  .box { padding: 12px 14px; gap: 8px; }
+  main { padding-top: 12px; }
+}
+/* 風量と風向は別のパネルで横に並べる */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: inherit; }
+.col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.box.wide { grid-column: 1 / -1; }
+.box h3 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .04em; display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.box h3 .val { margin-left: auto; color: var(--fg); font-weight: 400; letter-spacing: 0; }
+.box h3 .lock { color: var(--warn); display: inline-flex; }
+.box h3 svg { width: 16px; height: 16px; flex: none; }
+.warnbox { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-size: 13px; display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.warnbox svg { width: 18px; height: 18px; flex: none; }
+
+/* 温度リング：リングを触って温度を変える */
+.dialbox { justify-items: center; grid-template-rows: auto 1fr; }
+.dialbox .dial { align-self: center; }
+.dialbox h3 { justify-self: stretch; }
+/* スマホ1画面に温度・モード・風量・風向が収まるよう、画面の高さに合わせて大きさを変える */
+.dial { position: relative; width: clamp(200px, calc(100vh - 505px), 340px); width: clamp(200px, calc(100svh - 505px), 340px); max-width: 100%; aspect-ratio: 1; border-radius: 50%; }
+.dial svg { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.dial svg .hit { cursor: grab; }
+.dial.dragging svg .hit { cursor: grabbing; }
+.dial[aria-disabled="true"] svg .hit { cursor: not-allowed; }
+.dial .knob { transition: r .15s; }
+.dial.dragging .knob { r: 19; }
+.dial .pw { position: absolute; left: 50%; top: 86%; transform: translate(-50%, -50%); width: 60px; height: 60px; border-radius: 50%; border: 0;
+  background: var(--sunk); color: var(--muted); display: grid; place-items: center; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.dial .pw[aria-pressed="true"] { background: var(--col); color: var(--surface); }
+.dial .pw svg { width: 26px; height: 26px; }
+.dial .pw:disabled { opacity: .5; }
+
+/* 運転モード */
+.modes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.mode { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 8px 2px 6px; display: grid; justify-items: center; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.mode svg { width: 34px; height: 34px; }
+.mode[aria-pressed="true"] { border-color: var(--mc); color: var(--mc); background: color-mix(in srgb, var(--mc) 10%, transparent); font-weight: 700; }
+button:disabled, [aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+/* 風量・風向のインジケーター */
+.ind { display: grid; gap: 10px; }
+.pills { display: flex; gap: 6px; }
+.pill-b { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 4px; font-size: 12px; color: var(--muted); flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.pill-b[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: end; height: 84px; }
+.bar { height: 100%; border: 0; background: transparent; padding: 0; display: flex; align-items: flex-end; justify-content: center; border-radius: 8px; }
+.bar i { display: block; width: 100%; height: var(--h); border-radius: 6px; background: var(--sunk); transition: background .15s; }
+.bar.on i { background: var(--accent); }
+.bars.auto .bar i { animation: breathe 2.4s ease-in-out infinite; animation-delay: calc(var(--n) * .3s); }
+@keyframes breathe { 0%, 100% { background: var(--sunk); } 50% { background: color-mix(in srgb, var(--accent) 45%, var(--sunk)); } }
+.vane { min-width: 0; }
+.vane svg { width: 100%; height: 84px; display: block; }
+.vane .unit { fill: var(--sunk); stroke: var(--faint); stroke-width: 1.5; }
+.vane .ln { stroke: var(--faint); stroke-width: 7; stroke-linecap: round; transition: stroke .15s; }
+.vane .hit { stroke: transparent; stroke-width: 34; stroke-linecap: round; cursor: pointer; }
+.vane .tip { fill: var(--accent); }
+.vane .lb { fill: var(--muted); font: 11px var(--font-num); }
+.vane g.sel .ln { stroke: var(--accent); stroke-width: 11; }
+@media (min-width: 761px) { .bars, .vane svg { height: 112px; } }
+.vane.auto .ln { animation: breathe-s 2.4s ease-in-out infinite; animation-delay: calc(var(--n) * .25s); }
+.vane.swing .ln { animation: sweep 1.8s ease-in-out infinite; animation-delay: calc(var(--n) * .18s); }
+@keyframes breathe-s { 0%, 100% { stroke: var(--faint); } 50% { stroke: color-mix(in srgb, var(--accent) 40%, var(--faint)); } }
+@keyframes sweep { 0%, 60%, 100% { stroke: var(--faint); } 20% { stroke: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .bars.auto .bar i, .vane .ln { animation: none !important; } }
+.pills .indlbl { font-size: 12px; color: var(--muted); }
+
+/* 未接続 */
+.connect { text-align: center; padding: 56px 16px; display: grid; gap: 14px; justify-items: center; color: var(--muted); }
+.connect svg { width: 56px; height: 56px; color: var(--accent); }
+
+/* ---- フッター ---- */
+footer.foot { border-top: 1px solid var(--line); padding-block: 14px calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+footer.foot .info { margin-right: auto; min-width: 0; }
+.linkbtn { border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 8px 4px; display: inline-flex; align-items: center; gap: 4px; text-decoration: underline; text-underline-offset: 3px; }
+.linkbtn svg { width: 14px; height: 14px; }
+body.has-batch footer.foot { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---- 集中管理 ---- */
+.summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
+.pill b { font-family: var(--font-num); font-size: 15px; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--off); }
+.pill.run i { background: var(--ok); }
+.pill.warn { color: var(--warn); border-color: var(--warn); }
+.pill svg { width: 15px; height: 15px; }
+.summary .sel { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 14px 12px; display: grid; gap: 8px; align-content: start; cursor: pointer; min-width: 0; }
+.card[data-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.card::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--mc, var(--off)); }
+.card .head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.card .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .id { font-family: var(--font-num); font-size: 12px; color: var(--muted); }
+.check { margin-left: auto; width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--line); display: grid; place-items: center; background: var(--surface); flex: none; padding: 0; }
+.card[data-selected="true"] .check { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.check svg { width: 16px; height: 16px; opacity: 0; }
+.card[data-selected="true"] .check svg { opacity: 1; }
+.card .t { font-family: var(--font-num); font-weight: 300; font-size: 40px; line-height: 1; }
+.card[data-power="false"] .t { color: var(--muted); }
+.card .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 12px; background: var(--sunk); color: var(--muted); }
+.chip.md { color: var(--mc); background: color-mix(in srgb, var(--mc) 12%, transparent); font-weight: 700; }
+.chip.on { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); font-weight: 700; }
+.chip.warn { color: var(--warn); background: var(--warn-bg); }
+.chip svg { width: 13px; height: 13px; }
+.card .conn { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.batch { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 18px rgba(0,0,0,.08);
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+.batch .wrap { display: grid; gap: 8px; }
+.batch .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.batch select { width: auto; flex: 1 1 110px; }
+
+/* 管理者の入力欄 */
+.field { display: grid; gap: 4px; }
+.field label { font-size: 13px; color: var(--muted); }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+input[type="time"], input[type="number"], input[type="text"], input[type="password"], select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 10px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.switch input { width: 46px; height: 26px; appearance: none; -webkit-appearance: none; background: var(--line); border-radius: 999px; position: relative; flex: none; transition: background .2s; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); transition: left .2s; }
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { left: 23px; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+table.week { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.week th, table.week td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+table.week th { font-size: 12px; color: var(--muted); font-weight: 700; }
+.tblwrap { overflow-x: auto; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; text-align: right; font-family: var(--font-num); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ダイアログ・通知 */
+.modal { position: fixed; inset: 0; z-index: 40; background: rgba(8, 14, 20, .5); display: grid; place-items: center; padding: 16px; }
+.dialog { background: var(--surface); border-radius: 16px; padding: 20px; width: min(400px, 100%); display: grid; gap: 12px; }
+.dialog h2 { margin: 0; font-size: 18px; }
+.dialog .err { color: var(--warn); font-size: 13px; min-height: 1.4em; }
+.toast { position: fixed; left: 50%; top: calc(64px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px); opacity: 0; transition: .2s; z-index: 50;
+  background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; pointer-events: none; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .toast, .switch input, .switch input::after, .dial .knob, .bar i { transition: none; } }
+</style>
 </head>
-<body data-conn="off">
-  <header class="top">
-    <div>
-      <div class="eyebrow" id="devId">—</div>
-      <h1 id="title">本体に接続してください</h1>
-    </div>
-    <span class="badge" id="badge"><i></i><span id="badgeText">未接続</span></span>
-  </header>
+<body>
 
-  <main>
-    <section class="intro" id="intro">
-      <p>画面の内容は本体から読み込みます。下のボタンで接続してください。</p>
-    </section>
-
-    <section class="hero" id="hero" aria-live="polite">
-      <div class="hero-label" id="heroLabel"></div>
-      <div class="hero-value"><span id="heroValue">--</span><small id="heroUnit"></small></div>
-      <div class="hero-sub" id="heroSub"></div>
-    </section>
-
-    <section id="controls" class="controls"></section>
-
-    <section class="card" id="statusCard">
-      <h2>ステータス</h2>
-      <dl id="status" class="status"></dl>
-    </section>
-
-    <section id="actions" class="actions"></section>
-
-    <p class="foot" id="foot"></p>
-  </main>
-
-  <div class="connect-bar" id="connectBar">
-    <p id="connectMsg">本体とBluetoothで接続します</p>
-    <button class="primary" id="connectBtn" type="button">本体に接続</button>
+<header class="top">
+  <div class="wrap">
+    <div class="topbar" id="topbar"></div>
+    <div class="tabs" id="tabs" role="group" aria-label="管理者メニュー" hidden></div>
   </div>
+</header>
+<main class="wrap" id="main"></main>
+<footer class="wrap foot" id="foot"></footer>
+<div class="batch" id="batch" hidden>
+  <div class="wrap">
+    <div class="row"><b id="batchCount"></b><span class="note">をまとめて操作</span>
+      <button type="button" class="btn" id="bulkBtn" style="margin-left:auto">一括設定</button></div>
+    <div class="row">
+      <button type="button" class="btn primary" data-b="on">運転</button>
+      <button type="button" class="btn" data-b="off">停止</button>
+      <select id="batchMode" aria-label="モード"><option value="">モード</option></select>
+      <span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="btn" data-b="down" aria-label="温度を下げる">−</button>
+      <span class="note num" id="batchTemp"></span>
+      <button type="button" class="btn" data-b="up" aria-label="温度を上げる">＋</button></span>
+      <select id="batchFan" aria-label="風量"><option value="">風量</option></select>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal" hidden></div>
+<div class="toast" id="toast" role="status"></div>
 
-  <div class="toast" id="toast" role="status"></div>
+<script>
+'use strict';
+/* ================================================================
+ * 空調コントローラ（AC01〜AC04 用）
+ *  基本   : つないだ本体1台の操作画面（運転・温度リング・モード・風量・風向）
+ *  管理者 : フッターから入る裏メニュー。パスワードは本体で確かめる
+ *           - 操作     : 操作禁止を無視して操作できる
+ *           - 本体設定 : 入/切・オートオフタイマー、設定温度範囲制限、操作禁止、ウィークリータイマー、
+ *                        設定温度自動復帰、表示、フィルターサイン、機器名称、パスワード
+ *           - 集中管理 : 接続中の本体の一覧、選んだ本体の一括操作・一括設定、本体の追加
+ *  Bluetooth が使えない環境では、見本の4台で動く
+ * ================================================================ */
+const UUID = {
+  service:  'a3c80001-5b6e-4d2a-9f41-7e2b1c9d0a01',
+  state:    'a3c80002-5b6e-4d2a-9f41-7e2b1c9d0a01',
+  command:  'a3c80003-5b6e-4d2a-9f41-7e2b1c9d0a01',
+  info:     'a3c80004-5b6e-4d2a-9f41-7e2b1c9d0a01',
+  settings: 'a3c80006-5b6e-4d2a-9f41-7e2b1c9d0a01',
+};
+const MODES = [
+  { v: 'auto', label: '自動', c: 'var(--auto)' },
+  { v: 'cool', label: '冷房', c: 'var(--cool)' },
+  { v: 'heat', label: '暖房', c: 'var(--heat)' },
+  { v: 'dry',  label: '除湿', c: 'var(--dry)' },
+  { v: 'fan',  label: '送風', c: 'var(--fan)' },
+];
+const FANS = [['auto', '自動'], ['quiet', '静音'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']];
+const VV = [['auto', '自動'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['swing', 'スイング']];
+const LOCKS = [['pw', '運転／停止'], ['md', 'モード'], ['sp', '設定温度'], ['fn', '風量'], ['vane', '風向'], ['timer', 'タイマー']];
+const DAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const T_MIN = 16, T_MAX = 31;
 
-  <script src="app.js"></script>
+const ICON = {
+  auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19 12 4l7 15M8 13h8"/></svg>',
+  cool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 2 3-2M9 20l3-2 3 2"/></svg>',
+  heat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
+  dry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c3.5 4.6 6 7.8 6 11a6 6 0 0 1-12 0c0-3.2 2.5-6.4 6-11Z"/></svg>',
+  fan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/></svg>',
+  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/><path d="M10.3 3.9 2.6 17.3A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.7L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  timer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
+  bt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>',
+};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const modeOf = (v) => MODES.find((m) => m.v === v) || MODES[1];
+const label = (list, v) => (list.find((x) => x[0] === v) || [v, v])[1];
+const fmtT = (v) => (typeof v === 'number' && !isNaN(v) ? v.toFixed(1) : '--');
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ================= 本体（1台分） ================= */
+// state : 運転状態（pw, md, sp, fn, vv, tOn, tOff, aoff, aoffLeft, rt, rh, flt, adm）
+// cfg   : 管理者設定（name, lo, hi, lock, wkEn, wk, arMin, arSp, fltH, fltRun, runH, dRoom, dClock, dMode, bl, clock）
+class Unit {
+  constructor(id) { this.id = id; this.state = {}; this.cfg = {}; this.info = {}; this.connected = false; this.q = Promise.resolve(); }
+  get name() { return this.cfg.name || this.id; }
+  get caps() { return String(this.info.caps || '').split(',').filter(Boolean); }
+  locked(key) { return !this.state.adm && (this.cfg.lock || []).includes(key); }
+  op(fn) { const p = this.q.then(fn); this.q = p.catch(() => {}); return p; }
+}
+
+/* ---- 実機（Web Bluetooth） ---- */
+class BleUnit extends Unit {
+  constructor(device) { super(device.name.replace(/^ATOM-/, '')); this.device = device; }
+  async connect() {
+    this.device.ongattserverdisconnected = () => { this.connected = false; this.state.adm = false; app.update(); };
+    const server = await this.device.gatt.connect();
+    const svc = await server.getPrimaryService(UUID.service);
+    this.cCmd = await svc.getCharacteristic(UUID.command);
+    const cInfo = await svc.getCharacteristic(UUID.info);
+    this.info = JSON.parse(dec.decode(await this.op(() => cInfo.readValue())));
+    this.cState = await svc.getCharacteristic(UUID.state);
+    this.cState.oncharacteristicvaluechanged = (e) => this.onValue('state', e.target.value);
+    await this.op(() => this.cState.startNotifications());
+    await this.op(() => this.cState.readValue());
+    try {   // 管理者設定の読み出し（古いファームにはない）
+      this.cSet = await svc.getCharacteristic(UUID.settings);
+      this.cSet.oncharacteristicvaluechanged = (e) => this.onValue('cfg', e.target.value);
+      await this.op(() => this.cSet.startNotifications());
+      await this.op(() => this.cSet.readValue());
+    } catch { this.cSet = null; }
+    this.connected = true;
+    await this.send({ cmd: 'clock', epoch: Math.floor(Date.now() / 1000), tz: -new Date().getTimezoneOffset() });
+  }
+  onValue(kind, dv) {
+    try { Object.assign(this[kind], JSON.parse(dec.decode(dv))); app.update(); }
+    catch { this.op(() => (kind === 'state' ? this.cState : this.cSet).readValue()).catch(() => {}); }
+  }
+  send(obj) {
+    if (!this.connected || !this.cCmd) return Promise.reject(new Error('未接続'));
+    return this.op(() => this.cCmd.writeValueWithResponse(enc.encode(JSON.stringify(obj))));
+  }
+}
+
+/* ---- 見本（本体のふるまいを再現） ---- */
+class DemoUnit extends Unit {
+  constructor(id, kind, caps, init, cfg) {
+    super(id);
+    this.connected = true;
+    this.info = { id, fw: 'demo', kind, caps };
+    this.state = Object.assign({ pw: false, md: 'cool', sp: 26, fn: 'auto', vv: 'auto', tOn: '', tOff: '', aoff: 0, flt: false, adm: false }, init);
+    this.cfg = Object.assign({ name: '', lo: 16, hi: 31, lock: [], wkEn: false, wk: DAYS.map(() => ['', '']), arMin: 0, arSp: 26,
+      fltH: 0, fltRun: 120, runH: 840, dRoom: true, dClock: true, dMode: true, bl: 80, clock: '2026-11-19 14:05' }, cfg);
+    this.pin = null;   // 見本は数字4〜8桁ならどれでも通す（パスワードを変えるとそれだけが通る）
+  }
+  async send(o) {
+    await new Promise((r) => setTimeout(r, 80));
+    const s = this.state, c = this.cfg, adm = s.adm;
+    if (o.cmd === 'admin') { s.adm = this.pin ? o.pin === this.pin : /^\d{4,8}$/.test(o.pin || ''); }
+    else if (o.cmd === 'logout') { s.adm = false; }
+    else if (o.cmd === 'identify') { toast(`${this.name}：本体の表示を点滅させています`); }
+    else if (o.cmd === 'fltReset' && adm) { c.fltRun = 0; s.flt = false; }
+    else if (!o.cmd) {
+      const ok = (k) => adm || !c.lock.includes(k);
+      if ('pw' in o && ok('pw')) s.pw = o.pw;
+      if ('md' in o && ok('md')) s.md = o.md;
+      if ('fn' in o && ok('fn')) s.fn = o.fn;
+      if ('vv' in o && ok('vane')) s.vv = o.vv;
+      if ('sp' in o && ok('sp')) s.sp = Math.min(c.hi, Math.max(c.lo, Math.round(o.sp * 2) / 2));
+      for (const k of ['tOn', 'tOff', 'aoff']) if (k in o && ok('timer')) s[k] = o[k];
+      if (adm) {
+        for (const k of ['name', 'lock', 'wkEn', 'wk', 'arMin', 'arSp', 'fltH', 'dRoom', 'dClock', 'dMode', 'bl', 'lo', 'hi']) if (k in o) c[k] = o[k];
+        if (c.lo > c.hi) [c.lo, c.hi] = [c.hi, c.lo];
+        s.sp = Math.min(c.hi, Math.max(c.lo, s.sp));
+        if ('pin' in o && /^\d{4,8}$/.test(o.pin)) this.pin = o.pin;
+        s.flt = c.fltH > 0 && c.fltRun >= c.fltH;
+      }
+    }
+    app.update();
+  }
+}
+
+/* ================= アプリ ================= */
+const app = {
+  units: [],
+  current: null,        // 操作画面の本体
+  admin: false,
+  view: 'op',           // op（操作） / dev（本体設定） / all（集中管理） / bulk（一括設定）
+  selected: new Set(),
+  demo: false,
+  drag: null,           // 温度リングを触っている間 { u, v }
+
+  // 画面を作り直す（画面を切り替えたとき）
+  render() { renderTop(); renderMain(); renderFoot(); renderBatch(); },
+  // 本体からの知らせで表示を新しくする。入力欄がある画面（本体設定・一括設定）は、書きかけを消さないよう作り直さない
+  update() {
+    if (this.drag) return;
+    renderTop(); renderFoot(); renderBatch();
+    if (this.view === 'op') renderMain();
+    else if (this.view === 'all') renderAll();
+  },
+  go(view) { this.view = view; window.scrollTo(0, 0); this.render(); },
+  connectedUnits() { return this.units.filter((u) => u.connected); },
+  targets() { return this.units.filter((u) => this.selected.has(u.id) && u.connected); },
+  async sendTo(units, obj) {
+    const res = await Promise.allSettled(units.map((u) => u.send(obj)));
+    const failed = res.filter((r) => r.status === 'rejected').length;
+    if (failed) toast(`${failed}台に送れませんでした`);
+    return failed;
+  },
+};
+
+/* ---------------- 上部 ---------------- */
+function renderTop() {
+  const u = app.current;
+  const showDev = u && (app.view === 'op' || app.view === 'dev');
+  $('#topbar').innerHTML = `
+    <div class="devname">${showDev ? `<span class="dot ${u.connected ? 'on' : ''}" title="${u.connected ? '接続中' : '未接続'}"></span><b>${esc(u.name)}</b><span class="id">${esc(u.id)}</span>`
+      : `<b>${app.view === 'bulk' ? '一括設定' : app.view === 'all' ? '集中管理' : '空調コントローラ'}</b>`}</div>
+    ${app.admin ? '<span class="badge">管理者</span>' : ''}`;
+  const tabs = $('#tabs');
+  tabs.hidden = !app.admin;
+  if (app.admin) {
+    const cur = app.view === 'bulk' ? 'all' : app.view;
+    tabs.innerHTML = [['op', '操作'], ['dev', '本体設定'], ['all', '集中管理']]
+      .map(([v, l]) => `<button type="button" data-view="${v}" aria-pressed="${cur === v}" ${v !== 'all' && !app.current ? 'disabled' : ''}>${l}</button>`).join('');
+  }
+}
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-view]'); if (!b) return;
+  if (b.dataset.view === 'dev' && app.current && !app.current.state.adm) { askPin([app.current], () => app.go('dev')); return; }
+  app.go(b.dataset.view);
+});
+
+/* ---------------- 下部（管理者メニューの入口） ---------------- */
+function renderFoot() {
+  const n = app.connectedUnits().length;
+  const info = app.demo ? 'Bluetooth を使えない環境のため見本の4台で表示中（管理者パスワードは数字4桁ならどれでも可）'
+    : n ? `${n}台と接続中` : '未接続';
+  $('#foot').innerHTML = `<span class="info">${esc(info)}</span>
+    ${app.admin ? '<button type="button" class="linkbtn" id="adminExit">管理者モードを終わる</button>'
+      : `<button type="button" class="linkbtn" id="adminEnter">${ICON.lock}管理者メニュー</button>`}`;
+  const enter = $('#adminEnter'), exit = $('#adminExit');
+  if (enter) enter.onclick = () => {
+    const us = app.connectedUnits();
+    if (!us.length) return toast('先に本体と接続してください');
+    askPin(us, () => app.go(app.current ? 'dev' : 'all'));
+  };
+  if (exit) exit.onclick = async () => {
+    await app.sendTo(app.connectedUnits(), { cmd: 'logout' });
+    app.admin = false; app.selected.clear(); app.go('op'); toast('管理者モードを終わりました');
+  };
+}
+
+/* ---------------- 操作画面 ---------------- */
+function renderMain() {
+  const m = $('#main');
+  const keep = document.activeElement?.id;
+  if (app.view === 'op') m.innerHTML = opView(app.current);
+  else if (app.view === 'dev') m.innerHTML = devView(app.current);
+  else if (app.view === 'all') { m.innerHTML = '<div id="allView"></div>'; renderAll(); }
+  else if (app.view === 'bulk') m.innerHTML = bulkView();
+  if (app.view === 'op' && app.current) bindDial(app.current);
+  const bl = m.querySelector('#bl');
+  if (bl) bl.oninput = () => { m.querySelector('#blv').textContent = bl.value + '%'; };
+  if (keep && m.querySelector('#' + keep)) m.querySelector('#' + keep).focus();
+}
+
+const lockMark = (u, k) => (u.locked(k) ? `<span class="lock" title="管理者が操作を禁止しています" aria-label="操作禁止">${ICON.lock}</span>` : '');
+
+function opView(u) {
+  if (!u) return `<div class="connect">${ICON.bt}
+      <p>本体の NFC にスマホをかざすか、本体に出ている QR を読むと、このページが開きます。<br>下のボタンで、近くの本体を選んで接続します。</p>
+      <button type="button" class="btn primary" data-act="connect">本体と接続する</button></div>`;
+  if (!u.connected) return `<div class="connect">${ICON.bt}<p>${esc(u.name)} との接続が切れました。</p>
+      <button type="button" class="btn primary" data-act="reconnect">もう一度接続する</button></div>`;
+  const s = u.state;
+  const room = s.rt !== undefined && u.cfg.dRoom !== false ? `<span class="val num">室温 ${esc(s.rt)}℃　湿度 ${esc(s.rh)}%</span>` : '';
+  return `
+  ${s.flt ? `<div class="warnbox">${ICON.filter}フィルターの清掃時期です。管理者に知らせてください。</div>` : ''}
+  <div class="panel">
+    <section class="box dialbox"><h3>設定温度 ${lockMark(u, 'sp')}${room}</h3>${dialHtml(u)}</section>
+    <div class="col">
+      <section class="box"><h3>運転モード ${lockMark(u, 'md')}</h3>
+        <div class="modes">${MODES.map((m) => `<button type="button" class="mode" style="--mc:${m.c}" data-k="md" data-v="${m.v}" aria-pressed="${s.md === m.v}" ${u.locked('md') ? 'disabled' : ''}>${ICON[m.v]}${m.label}</button>`).join('')}</div></section>
+      <div class="pair">
+        <section class="box"><h3>風量 ${lockMark(u, 'fn')}<span class="val">${label(FANS, s.fn)}</span></h3>${fanHtml(u)}</section>
+        <section class="box"><h3>風向 ${lockMark(u, 'vane')}<span class="val">${label(VV, s.vv)}</span></h3>
+          <div class="ind" ${u.locked('vane') ? 'aria-disabled="true"' : ''}>${vaneVSvg(s.vv)}${pills([['auto', '自動'], ['swing', 'スイング']], s.vv, 'vv')}</div>
+        </section>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---- 温度リング ----
+ * 16〜31℃ を下の開いた 270° の円弧に割り当てる。リングに触れて回すと温度が変わり、指を離したときに本体へ送る。
+ * 数字は円弧の見た目の中心（円の中心より少し上）に置く。運転ボタンは円弧の開いたところ */
+const D = { cx: 160, cy: 160, r: 128, a0: 135, span: 270, numY: 151 };
+const angOf = (t) => D.a0 + ((t - T_MIN) / (T_MAX - T_MIN)) * D.span;
+const ptOf = (a, rr = D.r) => [D.cx + rr * Math.cos((a * Math.PI) / 180), D.cy + rr * Math.sin((a * Math.PI) / 180)];
+function arcPath(t1, t2) {
+  const a1 = angOf(t1), a2 = angOf(Math.max(t1 + 0.001, t2));
+  const [x1, y1] = ptOf(a1), [x2, y2] = ptOf(a2);
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${D.r} ${D.r} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+function dialHtml(u) {
+  const s = u.state, c = u.cfg, sp = Number(s.sp), lo = Number(c.lo ?? T_MIN), hi = Number(c.hi ?? T_MAX);
+  const col = s.pw ? modeOf(s.md).c : 'var(--off)';
+  const [kx, ky] = ptOf(angOf(sp));
+  const dis = u.locked('sp');
+  // 数字は Barlow の数字の高さ（約0.7em）の中央を numY に合わせる
+  const fs = 92, base = D.numY + fs * 0.35;
+  return `<div class="dial" id="dial" role="slider" tabindex="0" aria-label="設定温度" aria-valuemin="${lo}" aria-valuemax="${hi}" aria-valuenow="${sp}"
+      aria-valuetext="${fmtT(sp)}度" ${dis ? 'aria-disabled="true"' : ''} style="--col:${col}">
+    <svg viewBox="0 0 320 320" aria-hidden="true">
+      <path d="${arcPath(T_MIN, T_MAX)}" fill="none" stroke="var(--sunk)" stroke-width="20" stroke-linecap="round"/>
+      <path d="${arcPath(lo, hi)}" fill="none" stroke="color-mix(in srgb, ${col} 22%, var(--sunk))" stroke-width="20" stroke-linecap="round"/>
+      <path id="dArc" d="${arcPath(T_MIN, sp)}" fill="none" stroke="${col}" stroke-width="20" stroke-linecap="round"/>
+      <path class="hit" d="${arcPath(T_MIN, T_MAX)}" fill="none" stroke="transparent" stroke-width="64" pointer-events="stroke"/>
+      <circle id="dKnob" class="knob" cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="15" fill="var(--surface)" stroke="${col}" stroke-width="5" pointer-events="none"/>
+      <text id="dVal" x="${D.cx}" y="${base.toFixed(1)}" text-anchor="middle" font-family="Barlow, sans-serif" font-weight="300" font-size="${fs}"
+        fill="${s.pw ? 'var(--fg)' : 'var(--muted)'}" style="font-variant-numeric: tabular-nums" pointer-events="none">${fmtT(sp)}</text>
+    </svg>
+    <button type="button" class="pw" data-act="power" aria-pressed="${!!s.pw}" aria-label="${s.pw ? '停止する' : '運転する'}" ${u.locked('pw') ? 'disabled' : ''}>${ICON.power}</button>
+  </div>`;
+}
+function tempAt(u, x, y) {
+  let a = (Math.atan2(y - D.cy, x - D.cx) * 180) / Math.PI;
+  if (a < 0) a += 360;                       // 0〜360（0 が右、90 が下）
+  if (a >= 45 && a < 90) a = 405;            // 開いたところの右半分 → 上限側
+  else if (a >= 90 && a < 135) a = 135;      // 　　　〃　　　左半分 → 下限側
+  else if (a < 45) a += 360;
+  const t = T_MIN + ((a - D.a0) / D.span) * (T_MAX - T_MIN);
+  const lo = Number(u.cfg.lo ?? T_MIN), hi = Number(u.cfg.hi ?? T_MAX);
+  return Math.min(hi, Math.max(lo, Math.round(t * 2) / 2));
+}
+function showDial(t) {
+  const [kx, ky] = ptOf(angOf(t));
+  $('#dArc').setAttribute('d', arcPath(T_MIN, t));
+  $('#dKnob').setAttribute('cx', kx.toFixed(1)); $('#dKnob').setAttribute('cy', ky.toFixed(1));
+  $('#dVal').textContent = fmtT(t);
+  $('#dial').setAttribute('aria-valuenow', t);
+}
+function setSp(u, v) {
+  if (v === Number(u.state.sp)) { app.update(); return; }
+  u.state.sp = v;                            // 先に表示を変えておき、本体からの知らせで確かめる
+  app.update();
+  u.send({ sp: v }).catch(() => toast('送れませんでした'));
+}
+function bindDial(u) {
+  const dial = $('#dial'); if (!dial) return;
+  const svg = dial.querySelector('svg');
+  const pos = (e) => { const r = svg.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 320, ((e.clientY - r.top) / r.height) * 320]; };
+  svg.addEventListener('pointerdown', (e) => {
+    const [x, y] = pos(e), d = Math.hypot(x - D.cx, y - D.cy);
+    if (d < D.r - 44 || d > D.r + 34) return;           // 輪の上だけ
+    if (u.locked('sp')) { toast('設定温度の操作は禁止されています'); return; }
+    e.preventDefault();
+    svg.setPointerCapture(e.pointerId);
+    app.drag = { u, v: tempAt(u, x, y) };
+    dial.classList.add('dragging');
+    showDial(app.drag.v);
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!app.drag) return;
+    const v = tempAt(u, ...pos(e));
+    if (v !== app.drag.v) { app.drag.v = v; showDial(v); navigator.vibrate?.(4); }
+  });
+  const end = () => {
+    if (!app.drag) return;
+    const v = app.drag.v; app.drag = null; dial.classList.remove('dragging');
+    setSp(u, v);
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  dial.addEventListener('keydown', (e) => {
+    const d = { ArrowUp: 0.5, ArrowRight: 0.5, ArrowDown: -0.5, ArrowLeft: -0.5 }[e.key];
+    if (!d || u.locked('sp')) return;
+    e.preventDefault();
+    const lo = Number(u.cfg.lo ?? T_MIN), hi = Number(u.cfg.hi ?? T_MAX);
+    setSp(u, Math.min(hi, Math.max(lo, Number(u.state.sp) + d)));
+    $('#dial')?.focus();
+  });
+}
+
+/* ---- 風量：4本の棒の高さで強さを示す。棒を触ると、その強さになる ---- */
+function fanHtml(u) {
+  const s = u.state, dis = u.locked('fn');
+  const lvl = /^[1-4]$/.test(s.fn) ? Number(s.fn) : 0;
+  const cls = s.fn === 'auto' ? 'auto' : '';
+  return `<div class="ind" ${dis ? 'aria-disabled="true"' : ''}>
+    <div class="bars ${cls}" role="group" aria-label="風量の強さ">${[1, 2, 3, 4].map((i) =>
+      `<button type="button" class="bar ${lvl >= i ? 'on' : ''}" style="--h:${10 + i * 16}px;--n:${i}" data-k="fn" data-v="${i}" aria-pressed="${s.fn === String(i)}" aria-label="風量 ${i}"><i></i></button>`).join('')}
+    </div>${pills([['auto', '自動'], ['quiet', '静音']], s.fn, 'fn')}</div>`;
+}
+function pills(list, cur, key, head = '') {
+  return `<div class="pills">${head ? `<span class="indlbl">${head}</span>` : ''}${list.map(([v, l]) => `<button type="button" class="pill-b" data-k="${key}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
+}
+
+/* ---- 風向（上下のみ）：横から見た吹き出し口と、5段階の向き ---- */
+function vaneVSvg(cur) {
+  const px = 44, py = 26, L = 112, ANG = [6, 22, 38, 54, 70];
+  const mode = cur === 'auto' ? 'auto' : cur === 'swing' ? 'swing' : '';
+  const g = ANG.map((a, i) => {
+    const v = String(i + 1), r = (a * Math.PI) / 180;
+    const x = px + L * Math.cos(r), y = py + L * Math.sin(r);
+    const sel = cur === v;
+    return `<g class="${sel ? 'sel' : ''}" data-k="vv" data-v="${v}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="風向 ${v}" style="--n:${i}">
+      <line class="hit" x1="${px}" y1="${py}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>
+      <line class="ln" x1="${(px + 12 * Math.cos(r)).toFixed(1)}" y1="${(py + 12 * Math.sin(r)).toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>
+      ${sel ? `<circle class="tip" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8"/>` : ''}</g>`;
+  }).join('');
+  return `<div class="vane ${mode}"><svg viewBox="0 4 164 134" aria-label="風向">
+    <rect class="unit" x="4" y="10" width="44" height="18" rx="5"/>${g}</svg></div>`;
+}
+
+/* ---------------- 本体設定（管理者） ---------------- */
+function devView(u) {
+  if (!u) return '<p class="note">本体を選んでください。</p>';
+  if (!u.state.adm) return `<section class="box"><h3>${ICON.lock} 本体設定</h3><p>この本体では管理者として認証されていません。</p>
+    <div class="actions"><button type="button" class="btn" data-act="auth">パスワードを入れる</button></div></section>`;
+  const s = u.state, c = u.cfg;
+  return `<div class="panel">
+    <section class="box wide"><h3>${ICON.timer} タイマー</h3>
+      <div class="row2">
+        <div class="field"><label for="tOn">入タイマー（指定の時刻に運転）</label><input type="time" id="tOn" value="${esc(s.tOn)}"></div>
+        <div class="field"><label for="tOff">切タイマー（指定の時刻に停止）</label><input type="time" id="tOff" value="${esc(s.tOff)}"></div>
+        <div class="field"><label for="aoff">オートオフ（運転開始から止めるまで）</label>
+          <select id="aoff">${[0, 30, 60, 90, 120, 180, 240].map((m) => `<option value="${m}" ${Number(s.aoff) === m ? 'selected' : ''}>${m ? m + '分' : '使わない'}</option>`).join('')}</select></div>
+      </div>
+      <p class="note">入/切タイマーは1回だけ動きます。${s.aoffLeft ? `オートオフで、あと約${esc(s.aoffLeft)}分で停止します。` : ''}</p>
+      <div class="actions"><button type="button" class="btn" data-act="saveTimer">保存</button><button type="button" class="btn" data-act="clearTimer">入/切タイマーを取り消す</button></div>
+    </section>
+    ${adminCommon(c, u.caps)}
+    <section class="box"><h3>フィルターサイン</h3>
+      <dl class="kv"><dt>清掃後の運転時間</dt><dd>${esc(c.fltRun ?? 0)} 時間</dd><dt>知らせる間隔</dt><dd>${c.fltH ? esc(c.fltH) + ' 時間' : '使わない'}</dd></dl>
+      <div class="field"><label for="fltH">知らせる間隔（時間、0 で使わない）</label><input type="number" id="fltH" min="0" max="10000" step="100" value="${esc(c.fltH ?? 0)}"></div>
+      <div class="actions"><button type="button" class="btn" data-act="saveFlt">間隔を保存</button><button type="button" class="btn" data-act="fltReset">清掃した（リセット）</button></div>
+    </section>
+    <section class="box"><h3>機器名称・情報</h3>
+      <div class="field"><label for="name">機器名称（上部と集中管理に表示）</label><input type="text" id="name" maxlength="32" value="${esc(c.name)}" placeholder="例：会議室A"></div>
+      <div class="actions"><button type="button" class="btn" data-act="saveName">名称を保存</button><button type="button" class="btn" data-act="identify">本体の表示を点滅させる</button></div>
+      <dl class="kv"><dt>機器ID</dt><dd>${esc(u.id)}</dd><dt>種類</dt><dd>${esc({ remote: 'リモコン', display: '表示パネル', panel: 'パネル' }[u.info.kind] || u.info.kind)}</dd>
+        <dt>ファームウェア</dt><dd>${esc(u.info.fw)}</dd><dt>運転時間（累計）</dt><dd>${esc(c.runH ?? 0)} 時間</dd><dt>本体の時刻</dt><dd>${esc(c.clock || '未設定')}</dd></dl>
+    </section>
+    <section class="box"><h3>管理者パスワード</h3>
+      <div class="field"><label for="newPin">新しいパスワード（数字4〜8桁）</label><input type="password" id="newPin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+      <div class="actions"><button type="button" class="btn" data-act="savePin">変更する</button></div>
+    </section>
+  </div>`;
+}
+
+// 本体設定・一括設定の両方で使う項目
+function adminCommon(c, caps) {
+  const wk = c.wk || DAYS.map(() => ['', '']);
+  const lock = c.lock || [];
+  const has = (k) => !caps || caps.includes(k);
+  return `
+    <section class="box"><h3>設定温度範囲制限</h3>
+      <div class="row2"><div class="field"><label for="lo">下限（℃）</label><input type="number" id="lo" min="16" max="31" step="0.5" value="${esc(c.lo ?? 16)}"></div>
+      <div class="field"><label for="hi">上限（℃）</label><input type="number" id="hi" min="16" max="31" step="0.5" value="${esc(c.hi ?? 31)}"></div></div>
+      <p class="note">ユーザーはこの範囲の中でだけ温度を変えられます。</p>
+      <div class="actions"><button type="button" class="btn" data-act="saveRange">保存</button></div></section>
+    <section class="box"><h3>操作禁止（ユーザーの操作画面）</h3>
+      ${LOCKS.map(([k, l]) => `<label class="switch">${l}<input type="checkbox" id="lk_${k}" ${lock.includes(k) ? 'checked' : ''}></label>`).join('')}
+      <div class="actions"><button type="button" class="btn" data-act="saveLock">保存</button></div></section>
+    <section class="box wide"><h3>ウィークリータイマー</h3>
+      <label class="switch">ウィークリータイマーを使う<input type="checkbox" id="wkEn" ${c.wkEn ? 'checked' : ''}></label>
+      <div class="tblwrap"><table class="week"><thead><tr><th>曜日</th><th>運転開始</th><th>運転停止</th></tr></thead><tbody>
+        ${DAYS.map((d, i) => `<tr><td>${d}</td><td><input type="time" id="wkOn${i}" value="${esc(wk[i]?.[0])}" aria-label="${d}曜の運転開始"></td>
+          <td><input type="time" id="wkOff${i}" value="${esc(wk[i]?.[1])}" aria-label="${d}曜の運転停止"></td></tr>`).join('')}</tbody></table></div>
+      <div class="actions"><button type="button" class="btn" data-act="copyMon">月曜の時刻を平日に写す</button><button type="button" class="btn" data-act="saveWeek">保存</button></div></section>
+    <section class="box"><h3>設定温度自動復帰</h3>
+      <div class="row2"><div class="field"><label for="arMin">戻すまでの時間</label><select id="arMin">${[0, 30, 60, 90, 120].map((m) => `<option value="${m}" ${Number(c.arMin) === m ? 'selected' : ''}>${m ? m + '分' : '使わない'}</option>`).join('')}</select></div>
+      <div class="field"><label for="arSp">戻す温度（℃）</label><input type="number" id="arSp" min="16" max="31" step="0.5" value="${esc(c.arSp ?? 26)}"></div></div>
+      <p class="note">ユーザーが温度を変えてから、この時間がたつと決めた温度に戻します。</p>
+      <div class="actions"><button type="button" class="btn" data-act="saveAr">保存</button></div></section>
+    <section class="box"><h3>本体の表示</h3>
+      <label class="switch">室温・湿度を表示（センサー付きの本体）<input type="checkbox" id="dRoom" ${c.dRoom !== false ? 'checked' : ''} ${has('room') ? '' : 'disabled'}></label>
+      <label class="switch">時刻を表示<input type="checkbox" id="dClock" ${c.dClock !== false ? 'checked' : ''} ${has('clock') ? '' : 'disabled'}></label>
+      <label class="switch">運転モードを表示<input type="checkbox" id="dMode" ${c.dMode !== false ? 'checked' : ''} ${has('display') ? '' : 'disabled'}></label>
+      <div class="field"><label for="bl">画面の明るさ（バックライト付きの本体） <span class="num" id="blv">${esc(c.bl ?? 80)}%</span></label>
+        <input type="range" id="bl" min="5" max="100" step="5" value="${esc(c.bl ?? 80)}" ${has('brightness') ? '' : 'disabled'}></div>
+      <div class="actions"><button type="button" class="btn" data-act="saveDisp">保存</button></div></section>`;
+}
+
+// 入力欄から管理者設定を集める
+function collect(act, root) {
+  const v = (id) => root.querySelector('#' + id);
+  if (act === 'saveRange') return { lo: Number(v('lo').value), hi: Number(v('hi').value) };
+  if (act === 'saveLock') return { lock: LOCKS.map(([k]) => k).filter((k) => v('lk_' + k).checked) };
+  if (act === 'saveWeek') return { wkEn: v('wkEn').checked, wk: DAYS.map((_, i) => [v('wkOn' + i).value, v('wkOff' + i).value]) };
+  if (act === 'saveAr') return { arMin: Number(v('arMin').value), arSp: Number(v('arSp').value) };
+  if (act === 'saveDisp') return { dRoom: v('dRoom').checked, dClock: v('dClock').checked, dMode: v('dMode').checked, bl: Number(v('bl').value) };
+  if (act === 'saveTimer') return { tOn: v('tOn').value, tOff: v('tOff').value, aoff: Number(v('aoff').value) };
+  return null;
+}
+function weekCopy(root) {
+  for (let i = 2; i <= 5; i++) { root.querySelector('#wkOn' + i).value = root.querySelector('#wkOn1').value; root.querySelector('#wkOff' + i).value = root.querySelector('#wkOff1').value; }
+}
+
+/* ---------------- 集中管理（管理者） ---------------- */
+function renderAll() {
+  const box = $('#allView'); if (!box) return;
+  const units = app.units;
+  const run = units.filter((u) => u.state.pw).length, flt = units.filter((u) => u.state.flt).length, conn = app.connectedUnits().length;
+  box.innerHTML = `
+    <div class="summary">
+      <span class="pill run"><i></i>運転中 <b>${run}</b></span>
+      <span class="pill"><i></i>停止 <b>${units.length - run}</b></span>
+      ${flt ? `<span class="pill warn">${ICON.filter}フィルター清掃 <b>${flt}</b></span>` : ''}
+      <span class="pill">接続 <b>${conn}</b>／${units.length}</span>
+      <span class="sel"><button type="button" class="btn" data-act="selAll">すべて選択</button>
+        <button type="button" class="btn" data-act="selNone" ${app.selected.size ? '' : 'disabled'}>選択を解除</button>
+        <button type="button" class="btn" data-act="add">本体を追加</button></span>
+    </div>
+    <div class="grid">${units.map(cardHtml).join('')}</div>
+    <p class="note" style="margin-top:12px">カードを触るとその本体の操作画面へ。右上の四角で一括操作の対象を選びます。</p>`;
+}
+function cardHtml(u) {
+  const s = u.state, m = modeOf(s.md), sel = app.selected.has(u.id);
+  const timer = s.tOn || s.tOff || Number(s.aoff) || u.cfg.wkEn ? `<span class="chip">${ICON.timer}タイマー</span>` : '';
+  return `<article class="card" data-id="${esc(u.id)}" data-selected="${sel}" data-power="${!!s.pw}" style="--mc:${s.pw ? m.c : 'var(--off)'}" tabindex="0" aria-label="${esc(u.name)}">
+    <div class="head"><div style="min-width:0"><div class="name">${esc(u.name)}</div><div class="id">${esc(u.id)}</div></div>
+      <button type="button" class="check" data-sel="${esc(u.id)}" aria-label="${esc(u.name)}を選ぶ" aria-pressed="${sel}">${ICON.check}</button></div>
+    <div class="t">${fmtT(Number(s.sp))}</div>
+    <div class="meta">${s.pw ? '<span class="chip on">運転中</span>' : '<span class="chip">停止中</span>'}
+      <span class="chip md" style="--mc:${m.c}">${m.label}</span><span class="chip">風量 ${label(FANS, s.fn)}</span>${timer}
+      ${s.flt ? `<span class="chip warn">${ICON.filter}フィルター</span>` : ''}
+      ${(u.cfg.lock || []).length ? `<span class="chip">${ICON.lock}禁止あり</span>` : ''}</div>
+    <div class="conn"><span class="dot ${u.connected ? 'on' : ''}"></span>${u.connected ? '接続中' : '未接続'}${u.connected && !s.adm ? '・管理者未認証' : ''}</div>
+  </article>`;
+}
+
+function renderBatch() {
+  const show = app.admin && app.view === 'all' && app.targets().length > 0;
+  $('#batch').hidden = !show;
+  document.body.classList.toggle('has-batch', show);
+  if (!show) return;
+  const ts = app.targets();
+  $('#batchCount').textContent = `${ts.length}台`;
+  const sps = ts.map((u) => Number(u.state.sp));
+  $('#batchTemp').textContent = Math.min(...sps) === Math.max(...sps) ? fmtT(sps[0]) : `${fmtT(Math.min(...sps))}〜${fmtT(Math.max(...sps))}`;
+}
+$('#batchMode').innerHTML += MODES.map((m) => `<option value="${m.v}">${m.label}</option>`).join('');
+$('#batchFan').innerHTML += FANS.map(([v, l]) => `<option value="${v}">風量 ${l}</option>`).join('');
+$('#batch').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-b]'); if (!b) return;
+  const ts = app.targets();
+  if (b.dataset.b === 'on') app.sendTo(ts, { pw: true }).then(() => toast(`${ts.length}台を運転しました`));
+  if (b.dataset.b === 'off') app.sendTo(ts, { pw: false }).then(() => toast(`${ts.length}台を停止しました`));
+  if (b.dataset.b === 'up' || b.dataset.b === 'down') {
+    const d = b.dataset.b === 'up' ? 0.5 : -0.5;   // それぞれの温度から 0.5 ずつ
+    Promise.allSettled(ts.map((u) => u.send({ sp: Number(u.state.sp) + d })));
+  }
+});
+$('#batchMode').onchange = (e) => { if (e.target.value) app.sendTo(app.targets(), { md: e.target.value }); e.target.value = ''; };
+$('#batchFan').onchange = (e) => { if (e.target.value) app.sendTo(app.targets(), { fn: e.target.value }); e.target.value = ''; };
+$('#bulkBtn').onclick = () => {
+  const ng = app.targets().filter((u) => !u.state.adm);
+  if (ng.length) askPin(ng, () => app.go('bulk')); else app.go('bulk');
+};
+
+function bulkView() {
+  const ts = app.targets();
+  if (!ts.length) return '<p class="note">集中管理で本体を選んでください。</p>';
+  const caps = [...new Set(ts.flatMap((u) => u.caps))];
+  return `<div class="actions" style="margin-bottom:12px"><button type="button" class="btn" data-act="backAll">集中管理へ戻る</button></div>
+    <p class="note" style="margin-bottom:12px">保存した項目だけが ${ts.map((u) => esc(u.name)).join('・')} に書き込まれます（表示は ${esc(ts[0].name)} の今の値）。</p>
+    <div class="panel">${adminCommon(ts[0].cfg, caps)}</div>`;
+}
+
+/* ---------------- 画面の操作 ---------------- */
+$('#main').addEventListener('click', async (e) => {
+  const t = e.target.closest('[data-act],[data-k],[data-sel],.card'); if (!t) return;
+  const u = app.current;
+  if (t.dataset.sel) {                                   // 集中管理：選ぶ
+    app.selected.has(t.dataset.sel) ? app.selected.delete(t.dataset.sel) : app.selected.add(t.dataset.sel);
+    renderAll(); renderBatch(); return;
+  }
+  if (t.classList.contains('card')) {                    // 集中管理：その本体の操作画面へ
+    const cu = app.units.find((x) => x.id === t.dataset.id);
+    if (!cu.connected) { reconnect(cu); return; }
+    app.current = cu; app.go('op'); return;
+  }
+  if (t.dataset.k) {                                     // 操作画面：モード・風量・風向
+    if (t.closest('[aria-disabled="true"]')) return;
+    u.state[t.dataset.k] = t.dataset.v; app.update();    // 先に表示を変える
+    u.send({ [t.dataset.k]: t.dataset.v }).catch(() => toast('送れませんでした'));
+    return;
+  }
+  const a = t.dataset.act;
+  if (a === 'connect') return addUnit();
+  if (a === 'reconnect') return reconnect(u);
+  if (a === 'power') { u.state.pw = !u.state.pw; app.update(); return u.send({ pw: u.state.pw }).catch(() => toast('送れませんでした')); }
+  if (a === 'auth') return askPin([u], () => app.go('dev'));
+  if (a === 'selAll') { app.connectedUnits().forEach((x) => app.selected.add(x.id)); renderAll(); renderBatch(); return; }
+  if (a === 'selNone') { app.selected.clear(); renderAll(); renderBatch(); return; }
+  if (a === 'add') return addUnit();
+  if (a === 'backAll') return app.go('all');
+  if (a === 'copyMon') return weekCopy($('#main'));
+  const done = (p, msg = '保存しました') => p.then(() => { toast(msg); renderMain(); }).catch(() => toast('送れませんでした'));
+  if (app.view === 'bulk') {                             // 一括設定
+    const obj = collect(a, $('#main'));
+    if (obj) { const ts = app.targets(); const f = await app.sendTo(ts, obj); if (!f) toast(`${ts.length}台に保存しました`); renderMain(); }
+    return;
+  }
+  if (a === 'identify') return u.send({ cmd: 'identify' });
+  if (a === 'clearTimer') return done(u.send({ tOn: '', tOff: '' }), '入/切タイマーを取り消しました');
+  if (a === 'fltReset') return done(u.send({ cmd: 'fltReset' }), 'フィルターサインをリセットしました');
+  if (a === 'saveFlt') return done(u.send({ fltH: Number($('#fltH').value) }));
+  if (a === 'saveName') return done(u.send({ name: $('#name').value.trim() }));
+  if (a === 'savePin') {
+    const p = $('#newPin').value;
+    if (!/^\d{4,8}$/.test(p)) return toast('パスワードは数字4〜8桁にしてください');
+    return done(u.send({ pin: p }), '管理者パスワードを変更しました');
+  }
+  const obj = collect(a, $('#main'));
+  if (obj) done(u.send(obj));
+});
+$('#main').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const g = e.target.closest('g[data-k], .card');
+  if (g && g === e.target) { e.preventDefault(); g.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+});
+
+/* ---------------- 管理者パスワード ---------------- */
+function askPin(units, then) {
+  const m = $('#modal');
+  m.hidden = false;
+  m.innerHTML = `<form class="dialog" id="pinForm"><h2>管理者パスワード</h2>
+    <p class="note">${units.map((u) => esc(u.name)).join('・')} で確かめます${app.demo ? '（見本は数字4桁ならどれでも可）' : ''}。</p>
+    <input type="password" id="pin" inputmode="numeric" maxlength="8" autocomplete="current-password" aria-label="管理者パスワード">
+    <div class="err" id="pinErr"></div>
+    <div class="actions"><button type="button" class="btn" id="pinCancel">やめる</button><button type="submit" class="btn primary">開く</button></div></form>`;
+  $('#pin').focus();
+  $('#pinCancel').onclick = () => { m.hidden = true; };
+  $('#pinForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const pin = $('#pin').value;
+    await Promise.allSettled(units.map((u) => u.send({ cmd: 'admin', pin })));
+    await new Promise((r) => setTimeout(r, 150));
+    const ok = units.filter((u) => u.state.adm), ng = units.filter((u) => !u.state.adm);
+    if (!ok.length) { $('#pinErr').textContent = 'パスワードが違います（5回続けて間違えると1分間受け付けません）'; return; }
+    m.hidden = true;
+    if (ng.length) toast(`${ng.map((u) => u.name).join('・')} はパスワードが違うため、認証されていません`);
+    app.admin = true;
+    then ? then() : app.render();
+  };
+}
+
+/* ---------------- 本体との接続 ---------------- */
+const bleOk = () => !!navigator.bluetooth && window.top === window.self;
+const wantId = new URLSearchParams(location.search).get('id');   // NFC・QR の ?id=AC03
+async function addUnit() {
+  if (app.demo) return toast('見本では本体を追加できません');
+  if (!bleOk()) return toast('このページでは Bluetooth を使えません。Android の Chrome で開いてください');
+  try {
+    const filter = wantId && !app.units.length ? { name: `ATOM-${wantId}` } : { namePrefix: 'ATOM-' };
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ ...filter, services: [UUID.service] }] });
+    await connectDevice(dev, true);
+  } catch (e) {
+    if (e.name !== 'NotFoundError') toast(`接続できませんでした（${e.message}）`);
+  }
+}
+async function connectDevice(dev, makeCurrent) {
+  let u = app.units.find((x) => x.device === dev || x.id === dev.name.replace(/^ATOM-/, ''));
+  if (!u) { u = new BleUnit(dev); app.units.push(u); app.units.sort((a, b) => a.id.localeCompare(b.id)); }
+  else u.device = dev;
+  try {
+    await u.connect();
+    if (makeCurrent && !app.admin) app.current = u;
+    if (!app.current) app.current = u;
+    toast(`${u.name} と接続しました`);
+  } catch { toast(`${u.id} に接続できませんでした。パスキーを確かめてください`); }
+  app.render();
+}
+async function reconnect(u) {
+  if (app.demo || !u?.device) return;
+  try { await u.connect(); app.render(); } catch { toast(`${u.id} に接続できませんでした`); }
+}
+
+/* ---------------- 見本 ---------------- */
+function startDemo() {
+  app.demo = true;
+  app.units = [
+    new DemoUnit('AC01', 'remote', '', { pw: true, md: 'cool', sp: 26 }, { name: '会議室A' }),
+    new DemoUnit('AC02', 'remote', '', { pw: true, md: 'cool', sp: 25.5, fn: '2', flt: true }, { name: '会議室B', fltH: 2500, fltRun: 2612 }),
+    new DemoUnit('AC03', 'display', 'clock,display,brightness', { pw: false, md: 'heat', sp: 22 }, { name: '受付', lo: 20, hi: 28, lock: ['md'] }),
+    new DemoUnit('AC04', 'display', 'room,clock,display', { pw: true, md: 'cool', sp: 24, fn: '2', vv: '2', rt: '25.3', rh: 48, tOff: '18:00' },
+      { name: '執務室', wkEn: true, wk: DAYS.map((_, i) => (i > 0 && i < 6 ? ['08:30', '18:30'] : ['', ''])) }),
+  ];
+  app.current = app.units.find((u) => u.id === (wantId || 'AC04')) || app.units[3];   // NFC でかざした本体のつもり
+  app.render();
+}
+
+async function boot() {
+  if (!bleOk()) { startDemo(); return; }
+  app.render();
+  // 以前に許可した本体へ自動で再接続（Chrome が対応している場合）。?id= の本体を操作画面にする
+  if (navigator.bluetooth.getDevices) {
+    try {
+      for (const d of await navigator.bluetooth.getDevices())
+        if (d.name?.startsWith('ATOM-')) connectDevice(d, wantId ? d.name === `ATOM-${wantId}` : false);
+    } catch {}
+  }
+}
+boot();
+</script>
 </body>
 </html>
