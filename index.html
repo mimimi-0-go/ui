@@ -388,6 +388,7 @@ const app = {
   admin: false,
   view: 'op',           // op（操作） / dev（本体設定） / all（集中管理） / bulk（一括設定）
   selected: new Set(),
+  batchSp: null,        // 一括操作で最後に送った温度（選び直すと消す）
   demo: false,
   drag: null,           // 温度リングを触っている間 { u, v }
 
@@ -735,6 +736,8 @@ function cardHtml(u) {
 }
 
 function renderBatch() {
+  const keyNow = [...app.selected].sort().join(',');
+  if (keyNow !== renderBatch.key) { renderBatch.key = keyNow; app.batchSp = null; }   // 選び直したら基準を取り直す
   const show = app.admin && app.view === 'all' && app.targets().length > 0;
   $('#batch').hidden = !show;
   document.body.classList.toggle('has-batch', show);
@@ -752,8 +755,18 @@ $('#batch').addEventListener('click', (e) => {
   if (b.dataset.b === 'on') app.sendTo(ts, { pw: true }).then(() => toast(`${ts.length}台を運転しました`));
   if (b.dataset.b === 'off') app.sendTo(ts, { pw: false }).then(() => toast(`${ts.length}台を停止しました`));
   if (b.dataset.b === 'up' || b.dataset.b === 'down') {
-    const d = b.dataset.b === 'up' ? 0.5 : -0.5;   // それぞれの温度から 0.5 ずつ
-    Promise.allSettled(ts.map((u) => u.send({ sp: Number(u.state.sp) + d })));
+    // 選んだ本体すべてを同じ温度にする。基準は、そろっていればその温度、ばらばらなら平均（0.5 刻み）。
+    // 続けて押したときは、本体からの返事を待たずに前回送った温度から 0.5 ずつ動かす
+    const d = b.dataset.b === 'up' ? 0.5 : -0.5;
+    const sps = ts.map((u) => Number(u.state.sp));
+    const base = app.batchSp ?? (Math.min(...sps) === Math.max(...sps) ? sps[0] : Math.round((sps.reduce((x, y) => x + y, 0) / sps.length) * 2) / 2);
+    const v = Math.min(T_MAX, Math.max(T_MIN, base + d));
+    app.batchSp = v;
+    $('#batchTemp').textContent = fmtT(v);
+    app.sendTo(ts, { sp: v }).then(() => {
+      const off = ts.filter((u) => Number(u.state.sp) !== v);   // 範囲制限で同じ温度にならなかった本体
+      if (off.length) toast(`${off.map((u) => u.name).join('・')} は設定温度範囲制限のため ${fmtT(v)} にできませんでした`);
+    });
   }
 });
 $('#batchMode').onchange = (e) => { if (e.target.value) app.sendTo(app.targets(), { md: e.target.value }); e.target.value = ''; };
