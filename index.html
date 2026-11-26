@@ -339,7 +339,9 @@ class BleUnit extends Unit {
   }
   send(obj) {
     if (!this.connected || !this.cCmd) return Promise.reject(new Error('未接続'));
-    return this.op(() => this.cCmd.writeValueWithResponse(enc.encode(JSON.stringify(obj))));
+    const v = enc.encode(JSON.stringify(obj));
+    // iPhone 用のブラウザ（Bluefy など）には writeValueWithResponse がないことがあるので、古い書き方でも送る
+    return this.op(() => (this.cCmd.writeValueWithResponse ? this.cCmd.writeValueWithResponse(v) : this.cCmd.writeValue(v)));
   }
 }
 
@@ -869,7 +871,7 @@ const bleOk = () => !!navigator.bluetooth && window.top === window.self;
 const wantId = new URLSearchParams(location.search).get('id');   // NFC・QR の ?id=AC03
 async function addUnit() {
   if (app.demo) return toast('見本では本体を追加できません');
-  if (!bleOk()) return toast('このページでは Bluetooth を使えません。Android の Chrome で開いてください');
+  if (!bleOk()) return toast('このページでは Bluetooth を使えません。Android の Chrome か、iPhone の Bluefy で開いてください');
   try {
     const filter = wantId && !app.units.length ? { name: `ATOM-${wantId}` } : { namePrefix: 'ATOM-' };
     const dev = await navigator.bluetooth.requestDevice({ filters: [{ ...filter, services: [UUID.service] }] });

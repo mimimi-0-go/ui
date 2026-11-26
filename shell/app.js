@@ -105,7 +105,8 @@ class BleTransport {
     let off = 0;
     for (let i = 0; off < meta.len; i++) {
       const dv = await this.op(async () => {
-        await this.cUi.writeValueWithResponse(new Uint8Array([i & 0xff, i >> 8]));
+        const ix = new Uint8Array([i & 0xff, i >> 8]);
+        await (this.cUi.writeValueWithResponse ? this.cUi.writeValueWithResponse(ix) : this.cUi.writeValue(ix));
         return this.cUi.readValue();
       });
       if (dv.byteLength === 0) break;
@@ -128,7 +129,8 @@ class BleTransport {
   }
 
   send(obj) {
-    return this.op(() => this.cCmd.writeValueWithResponse(enc.encode(JSON.stringify(obj))));
+    const v = enc.encode(JSON.stringify(obj));
+    return this.op(() => (this.cCmd.writeValueWithResponse ? this.cCmd.writeValueWithResponse(v) : this.cCmd.writeValue(v)));
   }
 
   disconnect() {
